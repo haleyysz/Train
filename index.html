@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8" />
+		<title>Train</title>
+		<link rel="shortcut icon" type="image/x-icon" href="img/train.ico" media="screen" />
+		<!--浏览器小图标-->
+		<link rel="Bookmark" href="img/train.ico" />
+		<!--收藏夹显示图标-->
+		<link rel="stylesheet" href="css/stylesheet.css" />
+		<style type="text/css">
+			body {
+				background: #3A3A3C;
+			}
+			
+			.container {
+				width: 1400px;
+				height: 600px;
+				margin-top: 40px;
+				vertical-align: middle;
+			}
+			
+			.fromLeft {
+				position: absolute;
+				top: 60px;
+				left: 40px;
+			}
+			
+			.fromRight {
+				position: absolute;
+				top: 60px;
+				left: 120px;
+			}
+			
+			.fromBoth {
+				position: absolute;
+				top: 60px;
+				left: 200px;
+			}
+			
+			.startorstop {
+				position: absolute;
+				top: 60px;
+				right: 120px;
+			}
+			
+			.restart {
+				position: absolute;
+				top: 60px;
+				right: 40px;
+			}
+			
+			input {
+				padding: 1px;
+				border: 2px solid #662D91;
+				font-weight: bold;
+				width: 70px;
+				height: 30px;
+				color: #000000;
+				background: #FFFFFF;
+			}
+			
+			input:hover,
+			input:focus {
+				color: #FFFFFF;
+				background: #662D91;
+			}
+			
+			canvas {
+				margin-left: 12px;
+				/*padding: 10px;*/
+				background: white;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="container">
+			<img id="back-img" src="img/pixel-bg13.jpg" alt="The Background" style="display: none;" />
+			<img id="path-img" src="img/path.jpg" alt="The Path" style="display: none;" />
+			<!--<img id="trackBg-img" src="http://cordinglandscape.com/wp-content/uploads/2012/03/new-jersey-landscaping-cording-landscape-design-about-17-optimized.jpg" alt="soil" style="display: none;" />-->
+			<img id="soil-img1" src="img/pixel-bg000.png" alt="The Soil" style="display: none;" />
+			<img id="soil-img2" src="img/pixel-bg001.png" alt="The Soil" style="display: none;" />
+			<img id="track-img" src="img/grey-track.png" alt="The Track" style="display: none;" />
+			<img id="train-img" src="img/two-side-train1.png" alt="The Train" style="display: none;" />
+			<img id="gate-img" src="img/gate1.png" alt="The Gate" style="display: none;" />
+			<input id="fromLeft" value="FromLeft" type="button" class="fromLeft" onclick="fromLeft();" />
+			<input id="fromRight" value="FromRight" type="button" class="fromRight" onclick="fromRight();" />
+			<input id="fromBoth" value="FromBoth" type="button" class="fromBoth" onclick="fromBoth();" />
+			<input id="startorstop" value="STOP" type="button" class="startorstop" />
+			<input id="restart" onclick="restart()" value="RESTART" type="button" class="restart" />
+			<canvas id="train" width="1400" height="600">
+			Your browser does not support the canvas element.
+			</canvas>
+		</div>
+
+		<script type="text/javascript">
+			var cvs = document.getElementById("train");
+			var cxt = cvs.getContext('2d');
+
+			//虚线X轴
+			var LEFT_L0_X = 102;
+			var LEFT_L1_X = 252;
+			var LEFT_L2_X = 432;
+			var RIGHT_L2_X = 952;
+			var RIGHT_L1_X = 1132;
+			var RIGHT_L0_X = 1282;
+
+			//灯数组
+			var lights = new Array();
+
+			//火车不在L0之间
+			var currentTrainTag = -1;
+
+			//火车图
+			var train1 = {
+				x: 1,
+				y: 264,
+				w: 70,
+				h: 32,
+				v: 0,
+				tag: 1
+			};
+			var train2 = {
+				x: 1329,
+				y: 310,
+				w: 70,
+				h: 32,
+				v: 0,
+				tag: 2
+			};
+
+			//images
+			var background = document.getElementById("back-img");
+			var soil1 = document.getElementById("soil-img1");
+			var soil2 = document.getElementById("soil-img2");
+			var path = document.getElementById("path-img");
+			var trainImg = document.getElementById("train-img");
+			var trackImg = document.getElementById("track-img");
+			var gateImg = document.getElementById("gate-img");
+
+			//门数组,两个门对象
+			var gates = new Array();
+			var gate1 = new Gate(630, 230, 0, 20, 0.6);
+			var gate2 = new Gate(630, 350, 0, 20, 0.6);
+			gates.push(gate1);
+			gates.push(gate2);
+
+			//四个灯对象
+			var up1 = new Light(600, 130);
+			var up2 = new Light(770, 130);
+			var down1 = new Light(600, 380);
+			var down2 = new Light(770, 380);
+			lights.push(up1);
+			lights.push(up2);
+			lights.push(down1);
+			lights.push(down2);
+
+			function drawBackground() {
+				cxt.beginPath();
+				cxt.fillStyle = "#7BD434";
+				cxt.rect(0,150,1400,100);
+				cxt.rect(0,350,1400,100);
+				cxt.fill();
+				cxt.closePath();
+
+				var w2 = 1;
+				var w3 = 1;
+				
+				for(var n = 0; n < 2; n++) {
+					w2 = n * 700;
+					cxt.drawImage(soil1, w2, 0, 700, 200);
+				}
+
+				for(var m = 0; m < 2; m++) {
+					w3 = m * 700;
+					cxt.drawImage(soil2, w3, 400, 700, 200);
+				}
+			}
+			
+			function drawTrainPath(){
+				var w1 = 1;
+				var h1 = 200;
+				for(var i = 0; i <= 60; i++) {
+					h1 = i * 100;
+					for(var j = 0; j <= 140; j++) {
+						w1 = j * 100;
+						cxt.drawImage(background, w1, h1, 100, 100);
+					}
+				}
+			}
+
+			//门类
+			function Gate(x, y, w, h, v) {
+				this.x = x;
+				this.y = y;
+				this.w = w;
+				this.h = h;
+				this.v = v;
+			}
+
+			//红绿灯类
+			function Light(x, y) {
+				this.x = x;
+				this.y = y;
+				this.red = true;
+				this.yellow = true;
+				this.green = true;
+			}
+
+			//画灯
+			function drawLight() {
+				cxt.beginPath();
+				cxt.fillStyle = "#000000";
+				for(var i = 0; i < lights.length; i++) {
+					var light = lights[i];
+					cxt.fillRect(light.x, light.y, 30, 94); //上与下的灯
+				}
+
+				for(var i = 0; i < lights.length; i++) {
+					var light = lights[i];
+					cxt.beginPath();
+					if(light.red) {
+						cxt.fillStyle = "red";
+						cxt.arc(light.x + 15, light.y + 15, 10, 0, 360, false);
+					} else {
+						cxt.fillStyle = "grey";
+						cxt.arc(light.x + 15, light.y + 15, 10, 0, 360, false);
+					}
+					cxt.closePath();
+					cxt.fill();
+				}
+
+				for(var i = 0; i < lights.length; i++) {
+					var light = lights[i];
+					cxt.beginPath();
+					if(light.yellow) {
+						cxt.fillStyle = "#FCD200";
+						cxt.arc(light.x + 15, light.y + 47, 10, 0, 360, false);
+					} else {
+						cxt.fillStyle = "grey";
+						cxt.arc(light.x + 15, light.y + 47, 10, 0, 360, false);
+					}
+					cxt.closePath();
+					cxt.fill();
+				}
+
+				for(var i = 0; i < lights.length; i++) {
+					var light = lights[i];
+					cxt.beginPath();
+					if(light.green) {
+						cxt.fillStyle = "springgreen";
+						cxt.arc(light.x + 15, light.y + 77, 10, 0, 360, false);
+					} else {
+						cxt.fillStyle = "grey";
+						cxt.arc(light.x + 15, light.y + 77, 10, 0, 360, false);
+					}
+					cxt.closePath();
+					cxt.fill();
+				}
+				cxt.closePath();
+			}
+
+			//画道路图
+			function drawLine() {
+				//**********画粗线**********
+				//				cxt.beginPath();
+				//				cxt.lineWidth = 3; //线条宽度为3
+				//				//水平第一条粗线
+				//				cxt.moveTo(100, 280);
+				//				cxt.lineTo(1299, 280);
+				//				//水平第二条粗线
+				//				cxt.moveTo(100, 320);
+				//				cxt.lineTo(1299, 320);
+				//				cxt.closePath();
+				//				cxt.stroke();
+
+				//**********画细线**********
+				cxt.beginPath();
+				cxt.lineWidth = 2; //线条宽度为2
+				//垂直细线
+				//垂直左上细线
+				cxt.moveTo(640, 0);
+				cxt.lineTo(640, 220);
+				//垂直右上细线
+				cxt.moveTo(760, 0);
+				cxt.lineTo(760, 220);
+				//垂直左下细线
+				cxt.moveTo(640, 380);
+				cxt.lineTo(640, 600);
+				//垂直右下细线
+				cxt.moveTo(760, 380);
+				cxt.lineTo(760, 600);
+				cxt.closePath();
+				cxt.stroke();
+			}
+
+			function drawPath() {
+				cxt.beginPath();
+				var w = 1;
+				for(var i = 0; i < 7; i++) {
+					w = i * 120;
+					cxt.drawImage(path, 640, w, 120, 120);
+				}
+				cxt.closePath();
+			}
+
+			/* 绘制虚线：  
+			 * context 绘制画布环境对象  
+			 * sx 开始位置 - X坐标  
+			 * sy 开始位置 - Y坐标  
+			 * ex 结束位置 - X坐标  
+			 * ey 结束位置 - Y坐标  
+			 * length 虚线的单位长度  
+			 * */
+			function dashedLinTo(context, sx, sy, ex, ey, length) {
+				var w = ex - sx; //获取线条的水平宽度  
+				var h = ey - sy; //获取线条的垂直高度  
+				var l = Math.sqrt(w * w + h * h); // 获取线条的长度  
+				var index = Math.floor(l / length); //获取虚线的个数  
+				for(var i = 0; i < index; i++) {
+					if(i % 2 == 0) {
+						cxt.moveTo(sx + w / index * i, sy + h / index * i);
+					} else {
+						cxt.lineTo(sx + w / index * i, sy + h / index * i);
+					}
+				}
+				cxt.stroke();
+			}
+
+			//**********画虚线**********
+			function drawDashLine() {
+				cxt.beginPath();
+				cxt.strokeStyle = "#000000";
+				//左L0
+				dashedLinTo(cxt, 110, 140, 110, 270, 11);
+				dashedLinTo(cxt, 110, 350, 110, 480, 11);
+				//左L1
+				dashedLinTo(cxt, 260, 140, 260, 270, 11);
+				dashedLinTo(cxt, 260, 350, 260, 480, 11);
+				//左L2
+				dashedLinTo(cxt, 440, 140, 440, 270, 11);
+				dashedLinTo(cxt, 440, 350, 440, 480, 11);
+
+				//右L0
+				dashedLinTo(cxt, 1290, 140, 1290, 270, 11);
+				dashedLinTo(cxt, 1290, 350, 1290, 480, 11);
+				//右L1
+				dashedLinTo(cxt, 1140, 140, 1140, 270, 11);
+				dashedLinTo(cxt, 1140, 350, 1140, 480, 11);
+				//右L2
+				dashedLinTo(cxt, 960, 140, 960, 270, 11);
+				dashedLinTo(cxt, 960, 350, 960, 480, 11);
+				cxt.closePath();
+			}
+
+			//画Gate
+			function drawGate() {
+				cxt.beginPath();
+				cxt.strokeStyle = "#3A3A3C";
+				for(var i = 0; i < gates.length; i++) {
+					var gate = gates[i];
+					//cxt.fillRect(gate.x, gate.y, gate.w, gate.h);
+					cxt.drawImage(gateImg, gate.x, gate.y, gate.w, gate.h);
+				}
+				cxt.closePath();
+			}
+
+			//画提示
+			function drawFont() {
+				cxt.beginPath();
+				cxt.font = "14px Arial";
+				cxt.fillStyle = "#000000";
+				cxt.fillText("L0", LEFT_L0_X, 136);
+				cxt.fillText("L1", LEFT_L1_X, 136);
+				cxt.fillText("L2", LEFT_L2_X, 136);
+				cxt.fillText("L2", RIGHT_L2_X, 136);
+				cxt.fillText("L1", RIGHT_L1_X, 136);
+				cxt.fillText("L0", RIGHT_L0_X, 136);
+				cxt.closePath();
+
+				cxt.beginPath();
+				cxt.fillStyle = "#000000";
+				cxt.fillText("Road", 682, 110);
+				cxt.fillText("Road", 682, 490);
+				cxt.closePath();
+			}
+
+			//画轨道
+			function drawTrack() {
+				var w = 1;
+				for(var i = 0; i < 12; i++) {
+					w = i * 122;
+					cxt.beginPath();
+					cxt.drawImage(trackImg, w, 266, 122, 26);
+					cxt.drawImage(trackImg, w, 312, 122, 26);
+					cxt.closePath();
+				}
+			}
+
+			function panDuan1() {
+				for(var i = 0; i < lights.length; i++) {
+					var light = lights[i];
+					if(train1.x + train1.w < LEFT_L1_X || train1.x > RIGHT_L1_X) {
+						light.red = false;
+						light.yellow = false;
+						light.green = true;
+					}
+					if(train1.x + train1.w >= LEFT_L1_X && train1.x <= RIGHT_L1_X) {
+						light.red = false;
+						light.yellow = true;
+						light.green = false;
+					}
+					if(train1.x + train1.w >= LEFT_L2_X && train1.x <= RIGHT_L2_X) {
+						light.red = true;
+						light.yellow = false;
+						light.green = false;
+					}
+					for(var j = 0; j < gates.length; j++) {
+						var gate = gates[j];
+						if(light.green) {
+							gate.w = 0;
+						}
+						if(light.yellow && train1.x + train1.w >= LEFT_L1_X && train1.x + train1.w <= LEFT_L2_X) {
+							if(gate.w <= 160) {
+								gate.w += gate.v;
+							}
+						}
+						if(light.yellow && train1.x >= RIGHT_L2_X && train1.x <= RIGHT_L1_X) {
+							if(gate.w >= 0) {
+								gate.w -= gate.v;
+							}
+						}
+					}
+				}
+			}
+
+			function panDuan2() {
+				for(var i = 0; i < lights.length; i++) {
+					var light = lights[i];
+					if(train2.x + train2.w < LEFT_L1_X || train2.x > RIGHT_L1_X) {
+						light.red = false;
+						light.yellow = false;
+						light.green = true;
+					}
+					if(train2.x + train2.w >= LEFT_L1_X && train2.x <= RIGHT_L1_X) {
+						light.red = false;
+						light.yellow = true;
+						light.green = false;
+					}
+					if(train2.x + train2.w >= LEFT_L2_X && train2.x <= RIGHT_L2_X) {
+						light.red = true;
+						light.yellow = false;
+						light.green = false;
+					}
+					for(var j = 0; j < gates.length; j++) {
+						var gate = gates[j];
+						if(light.green) {
+							gate.w = 0;
+						}
+						if(light.yellow && train2.x <= RIGHT_L1_X && train2.x >= RIGHT_L2_X) {
+							if(gate.w <= 160) {
+								gate.w += gate.v * 2 / 3;
+							}
+						}
+						if(light.yellow && train2.x + train2.w <= LEFT_L2_X && train2.x + train2.w >= LEFT_L1_X) {
+							if(gate.w >= 0) {
+								gate.w -= gate.v * 2 / 3;
+							}
+						}
+					}
+				}
+			}
+
+			//画火车1
+			function drawLeft() {
+				cxt.beginPath();
+				cxt.drawImage(trainImg, train1.x, train1.y, train1.w, train1.h);
+				cxt.closePath();
+				runLeft();
+			}
+			//画火车2
+			function drawRight() {
+				cxt.beginPath();
+				cxt.drawImage(trainImg, train2.x, train2.y, train2.w, train2.h);
+				cxt.closePath();
+				runRight();
+			}
+
+			function canRun(train) {
+				return(currentTrainTag == -1 || currentTrainTag == train.tag);
+			}
+
+			function runLeft() {
+				//train1
+				train1.x += train1.v;
+				if(train1.x > 1399) {
+					train1.x = 1;
+				}
+				panDuan1();
+			}
+
+			function runRight() {
+				//train2
+				train2.x -= train2.v;
+				if(train2.x < 1) {
+					train2.x = 1399 - train2.w;
+				}
+				panDuan2();
+			}
+
+			function drawBoth() {
+				cxt.beginPath();
+				cxt.drawImage(trainImg, train1.x, train1.y, train1.w, train1.h);
+				cxt.drawImage(trainImg, train2.x, train2.y, train2.w, train2.h);
+				cxt.closePath();
+				//train1
+				if(canRun(train1) || train1.x >= RIGHT_L0_X) {
+
+					train1.x += train1.v;
+					if(train1.x + train1.w >= LEFT_L0_X && train1.x + train1.w <= RIGHT_L0_X) {
+						currentTrainTag = train1.tag;
+
+					} else if(train1.x > RIGHT_L0_X) {
+						currentTrainTag = -1;
+					}
+					if(train1.x > 1399) {
+						train1.x = 1;
+					}
+					panDuan1();
+				}
+
+				//train2
+				if(canRun(train2) || train2.x + train2.w <= LEFT_L0_X) {
+
+					train2.x -= train2.v;
+					if(train2.x <= RIGHT_L0_X) {
+						currentTrainTag = train2.tag;
+
+					} else if(train2.x > RIGHT_L0_X || train2.x < LEFT_L0_X) {
+						currentTrainTag = -1;
+					}
+					if(train2.x < 1) {
+						train2.x = 1399 - train2.w;
+					}
+					panDuan2();
+				}
+
+			}
+
+			function flashLeft() {
+				//把画布清理
+				cxt.clearRect(0, 0, cxt.canvas.width, cxt.canvas.height);
+				drawTrainPath(); //开始画火车轨道背景
+				drawBackground(); //开始画背景
+				drawLine(); //开始画道路
+				drawLight(); //开始画灯
+				drawDashLine(); //开始画虚线
+				drawPath(); //开始画汽车道路
+				drawFont(); //开始写标注
+				drawTrack(); //开始画轨道
+				drawGate(); //开始画门
+				drawLeft(); //开始画从左边来的火车
+			}
+
+			function flashRight() {
+				//把画布清理
+				cxt.clearRect(0, 0, cxt.canvas.width, cxt.canvas.height);
+				drawTrainPath(); //开始画火车轨道背景
+				drawBackground(); //开始画背景
+				drawLine(); //开始画道路
+				drawLight(); //开始画灯
+				drawDashLine(); //开始画虚线
+				drawPath(); //开始画汽车道路
+				drawFont(); //开始写标注
+				drawTrack(); //开始画轨道
+				drawGate(); //开始画门
+				drawRight(); //开始画从右边来的火车
+			}
+
+			function flashBoth() {
+				//把画布清理
+				cxt.clearRect(0, 0, cxt.canvas.width, cxt.canvas.height);
+				drawTrainPath(); //开始画火车轨道背景
+				drawBackground(); //开始画背景
+				drawLine(); //开始画道路
+				drawLight(); //开始画灯
+				drawDashLine(); //开始画虚线
+				drawPath(); //开始画汽车道路
+				drawFont(); //开始写标注
+				drawTrack(); //开始画轨道
+				drawGate(); //开始画门
+				drawBoth(); //开始画从两边来的火车
+			}
+			
+			var sign;
+			//跑fromLeft
+			function fromLeft() {
+				sign = 1;
+				train1.v = 3;
+				train1.x = 1;
+				clearInterval(window.interval);
+				window.interval = setInterval(flashLeft, 10);
+			}
+
+			//跑fromRight
+			function fromRight() {
+				sign = 2;
+				train2.v = 2;
+				train2.x = 1399 - train2.w;
+				clearInterval(window.interval);
+				window.interval = setInterval(flashRight, 10);
+			}
+
+			//跑fromboth
+			function fromBoth() {
+				sign = 3;
+				train1.v = 3;
+				train2.v = 2;
+				train1.x = 1;
+				train2.x = 1399 - train2.w;
+				clearInterval(window.interval);
+				window.interval = setInterval(flashBoth, 10);
+			}
+
+			//			window.interval = setInterval(flashScreen, 10);
+			//			clearInterval(window.interval);
+
+			var index = false;
+			document.onkeydown = function(event) {
+				var e = event || window.event || arguments.callee.caller.arguments[0];
+				if(e && e.keyCode == 32) { // space 键
+					if(index) {
+						start();
+					} else {
+						stop();
+					}
+					index = !index;
+					startorstop.value = startorstop.value == "STOP" ? "START" : "STOP";
+				}
+				if(e && e.keyCode == 13) { // enter 键
+					restart();
+				}
+				if(e && e.keyCode == 39) { // 右键
+					fromLeft();
+				}
+				if(e && e.keyCode == 37) { // 左键
+					fromRight();
+				}
+				if(e && e.keyCode == 38) { // 上键
+					fromBoth();
+				}
+			}
+
+			onload = function() {
+				startorstop.onclick = function() {
+					if(index) {
+						start();
+					} else {
+						stop();
+					}
+					index = !index;
+					this.value = this.value == "STOP" ? "START" : "STOP";
+				}
+			}
+
+			function start() {
+				switch(sign) {
+					case 1:
+						clearInterval(window.interval);
+						window.interval = setInterval(flashLeft, 10);
+						break;
+
+					case 2:
+						clearInterval(window.interval);
+						window.interval = setInterval(flashRight, 10);
+						break;
+
+					case 3:
+						clearInterval(window.interval);
+						window.interval = setInterval(flashBoth, 10);
+						break;
+				}
+			}
+
+			function stop() {
+				clearInterval(window.interval);
+			}
+
+			function restart() {
+				clearInterval(window.interval);
+				window.location.reload();
+				//			    window.location.href=window.location.href;
+
+				window.interval = setInterval(flashScreen, 10);
+			}
+		</script>
+	</body>
+
+</html>
